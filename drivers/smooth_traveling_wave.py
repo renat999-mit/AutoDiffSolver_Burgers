@@ -51,16 +51,16 @@ if __name__ == "__main__":
 	params['dt'] = dt
 	params['f'] = burgers_rhs
 
-	u_final_order1 = time_integration(t_0, t_f, dt, ic, params, order = 1, name = "Burgers Equation")
-	u_final_order2 = time_integration(t_0, t_f, dt, ic, params, order = 2, name = "Burgers Equation")
+	u_final_order1 = time_integration(t_0, t_f, dt, ic, params, order = 1, 
+									name = "Burgers Equation")
+	u_final_order2 = time_integration(t_0, t_f, dt, ic, params, order = 2, 
+									name = "Burgers Equation")
 
 	final_exact = tanh_traveling_wave(x, t_f, u_l, u_r, nu)
-	ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, color = 'b', label = f'Numerical BDF1, t = {t_f}')
-	ax.plot(x, u_final_order2, 'o-', ms = 2, lw = 1, color = 'g', label = f'Numerical BDF2, t = {t_f}')
+	ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, 
+		color = 'b', label = f'Numerical BDF1, t = {t_f}')
+	ax.plot(x, u_final_order2, 'o-', ms = 2, lw = 1, 
+		color = 'g', label = f'Numerical BDF2, t = {t_f}')
 	ax.plot(x, final_exact, lw = 1, color = 'r', label = f'Exact, t = {t_f}')
 	ax.legend()
 	plt.show()
-	
-
-
-
