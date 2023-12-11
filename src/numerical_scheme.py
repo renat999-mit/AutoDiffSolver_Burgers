@@ -3,6 +3,8 @@ Functions related to the numerical time integration scheme
 """
 
 import numpy as np
+import scipy.sparse as sparse
+import time
 from auto_diff import Surreal
 
 def residual_order1(u_n1, params):
@@ -44,7 +46,7 @@ def residual_order2(u_n1, params):
 
 	return u_n1 - (4./3.)*u_n + (1./3.)*u_nm1 - (2./3.)*dt*f(u_n1, params)
 
-def eval_jacobian(u,res_func,params):
+def eval_jacobian_dense(u,res_func,params):
 
 	"""
 	Compute the Jacobian matrix of a residual function at a given point.
@@ -77,7 +79,56 @@ def eval_jacobian(u,res_func,params):
 
 	return jacobian
 
-def newton_method(u_n, residual_func, params, tol = 1e-10, max_iter = 50, verbose = False):
+def eval_jacobian_sparse(u,res_func,params):
+
+	"""
+	Compute the Jacobian matrix of a residual function at a given point. The
+	Jacobian is created in sparse format.
+
+	Parameters:
+	u (array): The point at which to evaluate the Jacobian.
+	res_func (function): The residual function for which the Jacobian is to be computed.
+	params (dict): Additional parameters required by the residual function.
+
+	Returns:
+	sparse array: The Jacobian matrix of the residual function evaluated at 'u'.
+	"""
+
+	n = len(u)
+
+	# Lists for sparse matrix creation
+	row = []
+	col = []
+	data = []
+
+	# Iterate over each element of u
+	for i in range(n):
+
+		# Create a modified vector with the i-th element derivative part set to 1 (so effectively a Surreal)
+		u_modified = [Surreal(u[j], (1 if j == i else 0)) for j in range(n)]
+
+		# Evaluate the function
+		func_evaluated = res_func(u_modified, params)
+
+		jac_column = np.array([func_evaluated[j].derivative for j in range(n)])
+
+		# Find nonzeros and their indices in the current Jacobian column
+		nz = sparse.find(jac_column)
+		nz_row = nz[1]
+		nz_data = nz[2]
+		nnz = len(nz_data)
+
+		for k in range(nnz):
+			col.append(i)
+			row.append(nz_row[k])
+			data.append(nz_data[k])
+
+	jacobian = sparse.csr_array((data, (row, col)), shape=(n, n))
+
+	return jacobian
+
+def newton_method(u_n, residual_func, params, tol = 1e-10, max_iter = 50, 
+				  verbose = False, use_sparse_jac = False):
 	"""
     Perform the Newton-Raphson method to find a root of the given residual function.
 
@@ -88,32 +139,80 @@ def newton_method(u_n, residual_func, params, tol = 1e-10, max_iter = 50, verbos
     tol (float, optional): Tolerance for convergence. Defaults to 1e-10.
     max_iter (int, optional): Maximum number of iterations. Defaults to 50.
     verbose (bool, optional): Flag to enable verbose output. Defaults to False.
+    use_sparse_jac (bool, optional): Flag to enable usage of sparse Jacobian. Defaults to False.
 
     Returns:
     array: The solution (root) of the residual function.
     """
 	it = 0
+
+	if verbose:
+		time_0 = time.perf_counter()
+
 	while it <= max_iter:
 		if verbose:
-			print(f"it = {it}")
+			print(f"\nit = {it}")
 		
 		# Evaluate residual
 		res = residual_func(u_n, params)
 		if np.linalg.norm(res) < tol:
-			return u_n
-		
-		# Evaluate Jacobian
-		jac = eval_jacobian(u_n, residual_func, params)
+			if verbose:
+				time_1 = time.perf_counter()
+				print(f'Total Newton solve time = {time_1 - time_0} s')
 
-		# Compute delta_u and update guess
-		delta_u = np.linalg.solve(jac, -res)
+			return u_n
+
+		if use_sparse_jac:
+			if verbose:
+				time_jac_0 = time.perf_counter()
+
+			# Evaluate sparse Jacobian
+			jac = eval_jacobian_sparse(u_n, residual_func, params)
+
+			if verbose:
+				time_jac_1 = time.perf_counter()
+				print(f'Jacobian time = {time_jac_1 - time_jac_0} s')
+			
+			if verbose:
+				time_solve_0 = time.perf_counter()
+
+			# Compute delta_u with sparse direct solve
+			delta_u = sparse.linalg.spsolve(jac, -res)
+
+			if verbose:
+				time_solve_1 = time.perf_counter()
+				print(f'Sparse solve time = {time_solve_1 - time_solve_0} s')
+		else:
+			if verbose:
+				time_jac_0 = time.perf_counter()
+
+			# Evaluate dense Jacobian
+			jac = eval_jacobian_dense(u_n, residual_func, params)
+
+			if verbose:
+				time_jac_1 = time.perf_counter()
+				print(f'Jacobian time = {time_jac_1 - time_jac_0} s')
+			
+			if verbose:
+				time_solve_0 = time.perf_counter()
+
+			# Compute delta_u with dense direct solve
+			delta_u = np.linalg.solve(jac, -res)
+
+			if verbose:
+				time_solve_1 = time.perf_counter()
+				print(f'Dense solve time = {time_solve_1 - time_solve_0} s')
+			
+		# Update guess
 		u_n = u_n + delta_u
 
 		it += 1
 
 	assert(0), "Newton method failed"
 
-def time_integration(t_0, t_f, dt, ic, params, order: int = 1, name: str = None, verbose = False, time_history = False):
+def time_integration(t_0, t_f, dt, ic, params, order: int = 1, 
+					 name: str = None, verbose = False, 
+					 use_sparse_jac = False, time_history = False):
 	"""
     Perform time integration using either first or second order backward difference formula.
 
@@ -126,6 +225,7 @@ def time_integration(t_0, t_f, dt, ic, params, order: int = 1, name: str = None,
     order (int, optional): Order of the numerical integration (1 for BDF1, 2 for BDF2). Defaults to 1.
     name (str, optional): Name of the case being solved. Used for printing purposes. Defaults to None.
     verbose (bool, optional): Flag to enable verbose output. Defaults to False.
+    use_sparse_jac (bool, optional): Flag to enable usage of sparse Jacobian. Defaults to False.
     time_history (bool, optional): Flag to return the entire time history. Defaults to False.
 
     Returns:
@@ -160,7 +260,8 @@ def time_integration(t_0, t_f, dt, ic, params, order: int = 1, name: str = None,
 
 	# Take first step using first order scheme
 	params['u_n'] = ic.copy()
-	u_1 = newton_method(ic, residual_order1, params, verbose = verbose)
+	u_1 = newton_method(ic, residual_order1, params, verbose = verbose,
+						use_sparse_jac = use_sparse_jac)
 	if time_history:
 		history[:, 1] = u_1
 		
@@ -172,7 +273,8 @@ def time_integration(t_0, t_f, dt, ic, params, order: int = 1, name: str = None,
 	if order == 1:
 		params['u_n'] = u_1.copy()
 		for i in range(2, time_steps + 1):
-			u_n1 = newton_method(params['u_n'], residual_order1, params, verbose = verbose)
+			u_n1 = newton_method(params['u_n'], residual_order1, params, 
+						verbose = verbose, use_sparse_jac = use_sparse_jac)
 			if time_history:
 				history[:, i] = u_n1
 			t += dt
@@ -189,7 +291,8 @@ def time_integration(t_0, t_f, dt, ic, params, order: int = 1, name: str = None,
 		params['u_nm1'] = ic.copy()
 
 		for i in range(2, time_steps + 1):
-			u_n1 = newton_method(params['u_n'], residual_order2, params, verbose = verbose)
+			u_n1 = newton_method(params['u_n'], residual_order2, params, 
+						verbose = verbose, use_sparse_jac = use_sparse_jac)
 			if time_history:
 				history[:, i] = u_n1
 			t += dt
