@@ -63,6 +63,8 @@ if __name__ == "__main__":
 		ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, color = 'b', label = f'Numerical BDF1, t = {t_f}')
 		ax.plot(x, u_final_order2, 'o-', ms = 2, lw = 1, color = 'g', label = f'Numerical BDF2, t = {t_f}')
 		ax.plot(x, final_exact, lw = 1, color = 'r', label = f'Exact, t = {t_f}')
+		ax.set_xlabel('x')
+		ax.set_ylabel('u')
 		ax.legend()
 		plt.show()
 

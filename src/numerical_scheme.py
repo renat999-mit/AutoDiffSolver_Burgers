@@ -233,7 +233,7 @@ def time_integration_implicit(t_0, t_f, dt, ic, params, order: int = 1,
     """
 	if name:
 		print(f"Solving case: {name}")
-	print(f"Integrating in time with order = {order}")
+	print(f"Integrating implicit in time with order = {order}")
 
 	def print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='█'):
 		"""
@@ -310,7 +310,7 @@ def time_integration_implicit(t_0, t_f, dt, ic, params, order: int = 1,
 	else:
 		return params['u_n']
 	
-def time_integration_explicit(t_0, t_f, dt, ic, params, 
+def time_integration_explicit(t_0, t_f, dt, ic, params, order: int = 1, 
 				name: str = None, verbose = False, time_history = False):
 	"""
     Perform time integration using Foward Euler (first-order explicit method).
@@ -330,7 +330,7 @@ def time_integration_explicit(t_0, t_f, dt, ic, params,
     """
 	if name:
 		print(f"Solving case: {name}")
-	print("Integrating in time with Forward Euler")
+	print(f"Integrating explicit in time with order = {order}")
 
 	def print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='█'):
 		"""
@@ -361,18 +361,36 @@ def time_integration_explicit(t_0, t_f, dt, ic, params,
 
 	t = t_0
 
-	for i in range(1, time_steps + 1):
-		# Forward Euler step
-		u_n1 = params['u_n'] + dt*f(params['u_n'], params)
-		if time_history:
-				history[:, i] = u_n1
-		t += dt
-		if verbose:
-			print(f"t = {t}\n")
-		params['u_n'] = u_n1.copy()
+	# Forward Euler
+	if order == 1:
+		for i in range(1, time_steps + 1):
+			u_n1 = params['u_n'] + dt*f(params['u_n'], params)
+			if time_history:
+					history[:, i] = u_n1
+			t += dt
+			if verbose:
+				print(f"t = {t}\n")
+			params['u_n'] = u_n1.copy()
 
-		# Print the progress bar
-		print_progress_bar(i, time_steps, prefix='Progress:', suffix='Complete', length=50)
+			# Print the progress bar
+			print_progress_bar(i, time_steps, prefix='Progress:', suffix='Complete', length=50)
+
+	# RK2
+	elif order == 2:
+		for i in range(1, time_steps + 1):
+			a = dt*f(params['u_n'], params)
+			b = dt*f(params['u_n'] + a/2, params)
+			u_n1 = params['u_n'] + b
+			if time_history:
+					history[:, i] = u_n1
+			t += dt
+			if verbose:
+				print(f"t = {t}\n")
+			params['u_n'] = u_n1.copy()
+
+			# Print the progress bar
+			print_progress_bar(i, time_steps, prefix='Progress:', suffix='Complete', length=50)
+
 
 	if time_history:
 		return history
