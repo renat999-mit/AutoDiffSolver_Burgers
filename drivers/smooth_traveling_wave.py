@@ -71,7 +71,7 @@ def fit_line(dts, errors):
 
 if __name__ == "__main__":
 
-	single_run = False
+	single_run = True
 	convergence_study = not single_run
 
 	if single_run:
@@ -86,10 +86,10 @@ if __name__ == "__main__":
 		nu = 0.25
 
 		# Time parameters
-		t_0 = 0
+		t_0 = -7.5
 		ic = tanh_traveling_wave(x, t_0, u_l, u_r, nu)
-		t_f = 3
-		dt = 0.1
+		t_f = 7.5
+		dt = 0.5
 
 		fig, ax = plt.subplots()
 
@@ -106,8 +106,9 @@ if __name__ == "__main__":
 		u_final_order1 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 1, name = "Burgers Equation")
 		u_final_order2 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 2, name = "Burgers Equation")
 
+
 		final_exact = tanh_traveling_wave(x, t_f, u_l, u_r, nu)
-		ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, color = 'b', label = f'Numerical BDF1, t = {t_f}')
+		# ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, color = 'b', label = f'Numerical BDF1, t = {t_f}')
 		ax.plot(x, u_final_order2, 'o-', ms = 2, lw = 1, color = 'g', label = f'Numerical BDF2, t = {t_f}')
 		ax.plot(x, final_exact, lw = 1, color = 'r', label = f'Exact, t = {t_f}')
 		ax.legend()
