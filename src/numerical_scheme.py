@@ -210,9 +210,9 @@ def newton_method(u_n, residual_func, params, tol = 1e-10, max_iter = 50,
 
 	assert(0), "Newton method failed"
 
-def time_integration(t_0, t_f, dt, ic, params, order: int = 1, 
-					 name: str = None, verbose = False, 
-					 use_sparse_jac = False, time_history = False):
+def time_integration_implicit(t_0, t_f, dt, ic, params, order: int = 1, 
+					name: str = None, verbose = False, 
+					use_sparse_jac = False, time_history = False):
 	"""
     Perform time integration using either first or second order backward difference formula.
 
@@ -305,6 +305,75 @@ def time_integration(t_0, t_f, dt, ic, params, order: int = 1,
 			print_progress_bar(i, time_steps, prefix='Progress:', suffix='Complete', length=50)
 	else:
 		assert(0), "Order selected not implemented"         
+	if time_history:
+		return history
+	else:
+		return params['u_n']
+	
+def time_integration_explicit(t_0, t_f, dt, ic, params, 
+				name: str = None, verbose = False, time_history = False):
+	"""
+    Perform time integration using Foward Euler (first-order explicit method).
+
+    Parameters:
+    t_0 (float): Initial time.
+    t_f (float): Final time.
+    dt (float): Time step.
+    ic (array): Initial condition.
+    params (dict): Parameters required for the integration process.
+    name (str, optional): Name of the case being solved. Used for printing purposes. Defaults to None.
+    verbose (bool, optional): Flag to enable verbose output. Defaults to False.
+    time_history (bool, optional): Flag to return the entire time history. Defaults to False.
+
+    Returns:
+    array: The solution at the final time if time_history is False, otherwise the entire time history.
+    """
+	if name:
+		print(f"Solving case: {name}")
+	print("Integrating in time with Forward Euler")
+
+	def print_progress_bar(iteration, total, prefix='', suffix='', length=50, fill='█'):
+		"""
+		Small function to print a progress bar based on the time step
+		"""
+		percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+		filled_length = int(length * iteration // total)
+		bar = fill * filled_length + '-' * (length - filled_length)
+		print(f'\r{prefix} |{bar}| {percent}% {suffix}', end='\r')
+    
+		# Print New Line on Complete
+		if iteration == total: 
+			print()
+
+	f = params['f']
+	
+	if verbose:
+		print(f"t = {t_0}\n")
+          
+	time_steps = int((t_f - t_0) / dt)
+
+	# Initialize time history if needed
+	if time_history:
+		history = np.zeros((len(ic), time_steps + 1))
+		history[:, 0] = ic
+
+	params['u_n'] = ic.copy()
+
+	t = t_0
+
+	for i in range(1, time_steps + 1):
+		# Forward Euler step
+		u_n1 = params['u_n'] + dt*f(params['u_n'], params)
+		if time_history:
+				history[:, i] = u_n1
+		t += dt
+		if verbose:
+			print(f"t = {t}\n")
+		params['u_n'] = u_n1.copy()
+
+		# Print the progress bar
+		print_progress_bar(i, time_steps, prefix='Progress:', suffix='Complete', length=50)
+
 	if time_history:
 		return history
 	else:

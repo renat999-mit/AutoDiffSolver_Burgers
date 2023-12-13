@@ -15,7 +15,7 @@ sys.path.append(src_path)
 
 import numpy as np
 import matplotlib.pyplot as plt
-from numerical_scheme import time_integration
+from numerical_scheme import time_integration_implicit
 from dynamics import burgers_rhs
 
 # Define analytical solution
@@ -49,8 +49,8 @@ def run_convergence(dts, x_points, t_0, t_f, params):
 		params['dt'] = dt
 		params['f'] = burgers_rhs
 
-		u_final_order1 = time_integration(t_0, t_f, dt, ic, params, order = 1, name = f"Burgers Equation, dx = {dx}, dt = {dt}")
-		u_final_order2 = time_integration(t_0, t_f, dt, ic, params, order = 2, name = f"Burgers Equation, dx = {dx}, dt = {dt}")
+		u_final_order1 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 1, name = f"Burgers Equation, dx = {dx}, dt = {dt}")
+		u_final_order2 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 2, name = f"Burgers Equation, dx = {dx}, dt = {dt}")
 
 		final_exact = tanh_traveling_wave(x, t_f, u_l, u_r, nu)
 		error1[i] = np.sqrt(dx)*np.linalg.norm(final_exact - u_final_order1, 2)
@@ -103,8 +103,8 @@ if __name__ == "__main__":
 		params['dt'] = dt
 		params['f'] = burgers_rhs
 
-		u_final_order1 = time_integration(t_0, t_f, dt, ic, params, order = 1, name = "Burgers Equation")
-		u_final_order2 = time_integration(t_0, t_f, dt, ic, params, order = 2, name = "Burgers Equation")
+		u_final_order1 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 1, name = "Burgers Equation")
+		u_final_order2 = time_integration_implicit(t_0, t_f, dt, ic, params, order = 2, name = "Burgers Equation")
 
 		final_exact = tanh_traveling_wave(x, t_f, u_l, u_r, nu)
 		ax.plot(x, u_final_order1, 'o-', ms = 2, lw = 1, color = 'b', label = f'Numerical BDF1, t = {t_f}')
